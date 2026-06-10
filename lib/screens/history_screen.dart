@@ -1,67 +1,136 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
+import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../models/workout_model.dart';
 
-class HistoryScreen extends StatelessWidget {
-  const HistoryScreen({super.key});
+class EditWorkoutScreen extends StatefulWidget {
+  final Workout workout;
+  const EditWorkoutScreen({super.key, required this.workout});
+  @override
+  State<EditWorkoutScreen> createState() => _EditWorkoutScreenState();
+}
+
+class _EditWorkoutScreenState extends State<EditWorkoutScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _nameCtrl;
+  late String _day, _goal;
+  bool _loading = false;
+
+  final _days = [
+    'Segunda', 'Terça', 'Quarta', 'Quinta',
+    'Sexta', 'Sábado', 'Domingo'
+  ];
+  final _goals = [
+    'Hipertrofia', 'Resistência', 'Força',
+    'Emagrecimento', 'Condicionamento', 'Flexibilidade'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.workout.name);
+    _day = widget.workout.dayOfWeek;
+    _goal = widget.workout.goal;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
+    final uid = AuthService().currentUser!.id;
+    await DatabaseService().updateWorkout(
+        uid,
+        widget.workout.copyWith(
+            name: _nameCtrl.text.trim(), dayOfWeek: _day, goal: _goal));
+    if (mounted) Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-
     return Scaffold(
       backgroundColor: const Color(0xFF1C1C1E),
-      appBar: AppBar(title: const Text('Histórico'), automaticallyImplyLeading: false),
-      body: StreamBuilder<List<Workout>>(
-        stream: DatabaseService().getCompletedWorkouts(uid),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Colors.orange));
-          }
-          final workouts = snapshot.data ?? [];
-          if (workouts.isEmpty) {
-            return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(Icons.history, color: Colors.white38, size: 64),
-              SizedBox(height: 16),
-              Text('Nenhum treino concluído ainda.', style: TextStyle(color: Colors.white54)),
-            ]));
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: workouts.length,
-            itemBuilder: (_, i) {
-              final w = workouts[i];
-              final date = w.completedAt != null
-                  ? DateFormat('dd/MM/yyyy HH:mm').format(w.completedAt!) : '—';
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2C2C2E),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.green.withOpacity(0.3)),
-                ),
-                child: Row(children: [
-                  Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(color: Colors.green.withOpacity(0.2), shape: BoxShape.circle),
-                    child: const Icon(Icons.check_circle, color: Colors.green),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(w.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text('${w.dayOfWeek} · ${w.goal}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                    Text(date, style: const TextStyle(color: Colors.green, fontSize: 11)),
-                  ])),
-                ]),
-              );
-            },
-          );
-        },
+      appBar: AppBar(title: const Text('Editar Treino')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _label('Nome do treino'),
+            TextFormField(
+              controller: _nameCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: _dec('Nome do treino'),
+              validator: (v) =>
+                  v == null || v.isEmpty ? 'Informe o nome' : null,
+            ),
+            const SizedBox(height: 20),
+            _label('Dia da semana'),
+            _dropdown(_days, _day, (v) => setState(() => _day = v!)),
+            const SizedBox(height: 20),
+            _label('Objetivo'),
+            _dropdown(_goals, _goal, (v) => setState(() => _goal = v!)),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12))),
+                onPressed: _loading ? null : _save,
+                child: _loading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Salvar Alterações',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ]),
+        ),
       ),
     );
   }
+
+  Widget _label(String t) => Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(t,
+          style: const TextStyle(color: Colors.white54, fontSize: 13)));
+
+  InputDecoration _dec(String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.white38),
+        filled: true,
+        fillColor: const Color(0xFF2C2C2E),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.orange)),
+      );
+
+  Widget _dropdown(
+          List<String> items, String value, void Function(String?) cb) =>
+      DropdownButtonFormField<String>(
+        value: value,
+        onChanged: cb,
+        dropdownColor: const Color(0xFF2C2C2E),
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+            filled: true,
+            fillColor: const Color(0xFF2C2C2E),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none)),
+        items: items
+            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+            .toList(),
+      );
 }
