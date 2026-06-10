@@ -13,7 +13,10 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _index = 0;
   final List<Widget> _screens = const [
-    HomeScreen(), MyWorkoutsScreen(), HistoryScreen(), ProfileScreen(),
+    HomeScreen(),
+    MyWorkoutsScreen(),
+    HistoryScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -29,9 +32,12 @@ class _MainScreenState extends State<MainScreen> {
         onTap: (i) => setState(() => _index = i),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Treinos'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Histórico'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.fitness_center), label: 'Treinos'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.history), label: 'Histórico'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.person), label: 'Perfil'),
         ],
       ),
     );
