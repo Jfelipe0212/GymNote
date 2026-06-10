@@ -1,0 +1,4 @@
+GIT - git.scm.com
+Flutter SDK - flutter.dev
+Android.Studio - developer.android.com/studio
+Node.js - nodejs.org
